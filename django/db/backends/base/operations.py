@@ -153,13 +153,6 @@ class BaseDatabaseOperations:
         """
         return self.date_extract_sql(lookup_type, field_name)
 
-    def json_cast_text_sql(self, field_name):
-        """Return the SQL to cast a JSON value to text value."""
-        raise NotImplementedError(
-            'subclasses of BaseDatabaseOperations may require a '
-            'json_cast_text_sql() method'
-        )
-
     def deferrable_sql(self):
         """
         Return the SQL to make a constraint "initially deferred" during a
@@ -340,10 +333,6 @@ class BaseDatabaseOperations:
         not quote the given name if it's already been quoted.
         """
         raise NotImplementedError('subclasses of BaseDatabaseOperations may require a quote_name() method')
-
-    def random_function_sql(self):
-        """Return an SQL expression that returns a random value."""
-        return 'RANDOM()'
 
     def regex_lookup(self, lookup_type):
         """

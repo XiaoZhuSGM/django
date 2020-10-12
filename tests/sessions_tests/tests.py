@@ -19,7 +19,9 @@ from django.contrib.sessions.backends.file import SessionStore as FileSession
 from django.contrib.sessions.backends.signed_cookies import (
     SessionStore as CookieSession,
 )
-from django.contrib.sessions.exceptions import InvalidSessionKey
+from django.contrib.sessions.exceptions import (
+    InvalidSessionKey, SessionInterrupted,
+)
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.sessions.models import Session
 from django.contrib.sessions.serializers import (
@@ -28,7 +30,7 @@ from django.contrib.sessions.serializers import (
 from django.core import management
 from django.core.cache import caches
 from django.core.cache.backends.base import InvalidCacheBackendError
-from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpResponse
 from django.test import (
     RequestFactory, SimpleTestCase, TestCase, ignore_warnings,
@@ -746,10 +748,10 @@ class SessionMiddlewareTests(TestCase):
             "The request's session was deleted before the request completed. "
             "The user may have logged out in a concurrent request, for example."
         )
-        with self.assertRaisesMessage(SuspiciousOperation, msg):
+        with self.assertRaisesMessage(SessionInterrupted, msg):
             # Handle the response through the middleware. It will try to save
             # the deleted session which will cause an UpdateError that's caught
-            # and raised as a SuspiciousOperation.
+            # and raised as a SessionInterrupted.
             middleware(request)
 
     def test_session_delete_on_end(self):
@@ -779,7 +781,7 @@ class SessionMiddlewareTests(TestCase):
         )
         # SessionMiddleware sets 'Vary: Cookie' to prevent the 'Set-Cookie'
         # from being cached.
-        self.assertEqual(response['Vary'], 'Cookie')
+        self.assertEqual(response.headers['Vary'], 'Cookie')
 
     @override_settings(SESSION_COOKIE_DOMAIN='.example.local', SESSION_COOKIE_PATH='/example/')
     def test_session_delete_on_end_with_custom_domain_and_path(self):
@@ -824,7 +826,7 @@ class SessionMiddlewareTests(TestCase):
         # A cookie should not be set.
         self.assertEqual(response.cookies, {})
         # The session is accessed so "Vary: Cookie" should be set.
-        self.assertEqual(response['Vary'], 'Cookie')
+        self.assertEqual(response.headers['Vary'], 'Cookie')
 
     def test_empty_session_saved(self):
         """
@@ -847,7 +849,7 @@ class SessionMiddlewareTests(TestCase):
             'Set-Cookie: sessionid=%s' % request.session.session_key,
             str(response.cookies)
         )
-        self.assertEqual(response['Vary'], 'Cookie')
+        self.assertEqual(response.headers['Vary'], 'Cookie')
 
         # Empty the session data.
         del request.session['foo']
@@ -864,7 +866,7 @@ class SessionMiddlewareTests(TestCase):
             'Set-Cookie: sessionid=%s' % request.session.session_key,
             str(response.cookies)
         )
-        self.assertEqual(response['Vary'], 'Cookie')
+        self.assertEqual(response.headers['Vary'], 'Cookie')
 
 
 class CookieSessionTests(SessionTestsMixin, SimpleTestCase):

@@ -29,6 +29,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         'PositiveBigIntegerField': 'unsigned integer',
         'PositiveIntegerField': 'unsigned integer',
         'PositiveSmallIntegerField': 'unsigned integer',
+        'DurationField': 'signed integer',
     }
     cast_char_field_without_max_length = 'char'
     explain_prefix = 'EXPLAIN'
@@ -172,9 +173,6 @@ class DatabaseOperations(BaseDatabaseOperations):
         if name.startswith("`") and name.endswith("`"):
             return name  # Quoting once is enough.
         return "`%s`" % name
-
-    def random_function_sql(self):
-        return 'RAND()'
 
     def return_insert_columns(self, fields):
         # MySQL and MariaDB < 10.5.0 don't support an INSERT...RETURNING

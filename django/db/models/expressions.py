@@ -421,6 +421,7 @@ class Expression(BaseExpression, Combinable):
 
 _connector_combinators = {
     connector: [
+        (fields.IntegerField, fields.IntegerField, fields.IntegerField),
         (fields.IntegerField, fields.DecimalField, fields.DecimalField),
         (fields.DecimalField, fields.IntegerField, fields.DecimalField),
         (fields.IntegerField, fields.FloatField, fields.FloatField),
@@ -808,16 +809,6 @@ class Star(Expression):
 
     def as_sql(self, compiler, connection):
         return '*', []
-
-
-class Random(Expression):
-    output_field = fields.FloatField()
-
-    def __repr__(self):
-        return "Random()"
-
-    def as_sql(self, compiler, connection):
-        return connection.ops.random_function_sql(), []
 
 
 class Col(Expression):
@@ -1252,7 +1243,7 @@ class OrderBy(BaseExpression):
         self.descending = True
 
 
-class Window(Expression):
+class Window(SQLiteNumericMixin, Expression):
     template = '%(expression)s OVER (%(window)s)'
     # Although the main expression may either be an aggregate or an
     # expression with an aggregate function, the GROUP BY that will
@@ -1330,6 +1321,16 @@ class Window(Expression):
             'expression': expr_sql,
             'window': ''.join(window_sql).strip()
         }, params
+
+    def as_sqlite(self, compiler, connection):
+        if isinstance(self.output_field, fields.DecimalField):
+            # Casting to numeric must be outside of the window expression.
+            copy = self.copy()
+            source_expressions = copy.get_source_expressions()
+            source_expressions[0].output_field = fields.FloatField()
+            copy.set_source_expressions(source_expressions)
+            return super(Window, copy).as_sqlite(compiler, connection)
+        return self.as_sql(compiler, connection)
 
     def __str__(self):
         return '{} OVER ({}{}{})'.format(
